@@ -9,13 +9,55 @@
 #include <stdlib.h>
 #include <pcap.h>
 
+
 enum HTTP_METHODS {
   GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE, PATCH
 } ;
 
+struct http_req {
+    enum HTTP_METHODS method;
+    char* url;
+    char* version;
+};
 
-int Sum(int a, int b);
-void processDns();
+struct dnshdr {
+    int16_t id;
+    int16_t flags;
+    int16_t questions;
+    int16_t answers;
+    int16_t nscount;
+    int16_t arcount;
+};
+
+struct dns_query{
+  int16_t type;
+  int16_t class;
+  char* url;
+};
+
+struct dns_request {
+  struct dnshdr* header;
+  struct dns_query* query;
+};
+
+struct dns_answer {
+  char* name;
+  int16_t type;
+  int16_t class;
+  int32_t timetolive;
+  int16_t data;
+  char* cname;
+  int32_t addr;
+};
+
+struct dns_response {
+  struct dnshdr* header;
+  struct dns_query* query;
+  struct dns_answer* answer;
+};
+
+struct dns_request processDnsRequest(const u_char* packet, const struct pcap_pkthdr* pkthdr);
+struct dns_response processDnsResponse(const u_char* packet, const struct pcap_pkthdr* pkthdr);
 void processHttpRequest(int dstPort,const u_char* packet,const struct pcap_pkthdr* pkthdr);
 void processHttpResponse(int dstPort,const u_char* packet,const struct pcap_pkthdr* pkthdr);
 u_char* split_lines_http(u_char* payload, u_int max_length);

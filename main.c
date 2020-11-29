@@ -52,6 +52,7 @@ void my_packet_handler(
       dstPort = ntohs(udp_header->dest);
     }
 
+
     //http PORT 443 or 80
     if (sourcePort == 80) {
       processHttpResponse(sourcePort, packet, pkthdr);
@@ -59,8 +60,16 @@ void my_packet_handler(
       processHttpRequest(dstPort, packet, pkthdr);
     }
     // DNS PORT 53
-    else if( sourcePort == 53 || dstPort == 53 ) {
-      processDns();
+    else if(dstPort == 53 ) {
+      struct dns_request dnsRequest;
+      dnsRequest = processDnsRequest(packet, pkthdr);
+      fprintf(stderr, "%s\n", dnsRequest.query->url );
+    } else if(sourcePort == 53){
+      struct dns_response dnsReponse;
+      dnsReponse = processDnsResponse(packet, pkthdr);
+      fprintf(stderr, "%i\n", dnsReponse.header->id );
+      return;
+
     } else {
       return;
     }
