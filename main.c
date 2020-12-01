@@ -11,9 +11,13 @@
 #include "PacketFilter.h"
 
 // DNS (avoid resolving domains) | HTTP (header Host: facebook.com | HTTPS (Only if SNI extension is present)).
+struct session_data sessData = { .tcp = 0, .udp = 0 , .dns = 0, .http = 0, .https=0 };
+FILE *fd;
 
 
-
+void printSessionData(struct session_data sessData) {
+  fprintf(fd, "Session Data:\n UDP: %lld\n  DNS:%lld\n TCP: %lld\n",sessData.udp, sessData.dns ,sessData.tcp );
+}
 
 
 void print_packet_info(const u_char *packet, struct pcap_pkthdr packet_header) {
@@ -43,10 +47,12 @@ void my_packet_handler(
     ip_header = (struct ip*)(packet + sizeof(struct ether_header));
 
     if (ip_header->ip_p != IPPROTO_TCP){
+        sessData.tcp += 1;
         tcp_header = (struct tcphdr*)(packet + sizeof(struct ether_header) + sizeof(struct ip));
         sourcePort = ntohs(tcp_header->source);
         dstPort = ntohs(tcp_header->dest);
-    } else {
+    } else if (ip_header->ip_p != IPPROTO_UDP){
+      sessData.udp += 1;
       udp_header = (struct udphdr*)(packet + sizeof(struct ether_header) + sizeof(struct ip));
       sourcePort = ntohs(udp_header->source);
       dstPort = ntohs(udp_header->dest);
@@ -55,19 +61,25 @@ void my_packet_handler(
 
     //http PORT 443 or 80
     if (sourcePort == 80) {
-      processHttpResponse(sourcePort, packet, pkthdr);
+      // processHttpResponse(sourcePort, packet, pkthdr);
     } else if (sourcePort == 443 || dstPort == 80 || dstPort == 443) {
-      processHttpRequest(dstPort, packet, pkthdr);
+      // processHttpRequest(dstPort, packet, pkthdr);
     }
     // DNS PORT 53
     else if(dstPort == 53 ) {
-      struct dns_request dnsRequest;
+      struct dns_request* dnsRequest;
       dnsRequest = processDnsRequest(packet, pkthdr);
-      fprintf(stderr, "%s\n", dnsRequest.query->url );
+      if(dnsRequest != NULL) {
+        sessData.dns += 1;
+        freeDnsPaquet(dnsRequest);
+      }
     } else if(sourcePort == 53){
-      struct dns_response dnsReponse;
-      dnsReponse = processDnsResponse(packet, pkthdr);
-      fprintf(stderr, "%i\n", dnsReponse.header->id );
+      struct dns_response* dnsResponse;
+      dnsResponse = processDnsResponse(packet, pkthdr);
+      if(dnsResponse != NULL) {
+        sessData.dns += 1;
+        freeDnsResponse(dnsResponse);
+      }
       return;
 
     } else {
@@ -84,39 +96,31 @@ void my_packet_handler(
         return;
     }
 
+
 }
+
 
 
 
 int main(){
     char error_buffer[PCAP_ERRBUF_SIZE];
 
-    const char* path = "./http.cap";
-
+    const char* path = "./packets_default.pcap";
+    fd = fopen("./logs.json", "w");
     // check if we can read and acces the file
     if (access(path, F_OK|R_OK)){
         printf("No access to file %s\n", path);
         return 1;
     }
 
-
-
+    FILE *packetProcessed = fopen("./pakcets.json", "w");
+    fprintf(packetProcessed, "[\n");
+    fclose(packetProcessed);
     pcap_t* handle = pcap_open_offline(path, error_buffer);
     pcap_loop(handle, 0, my_packet_handler, NULL);
     pcap_close(handle);
-
-
-    // struct pcap_pkthdr packet_header;
-
-
-    // const u_char *packet = pcap_next(handle, &packet_header);
-
-    // if (packet == NULL){
-    //     printf("No packet available");
-    //     return 2;
-    // }
-    // print_packet_info(packet, packet_header);
-
-
-
+    printSessionData(sessData);
+    packetProcessed = fopen("./pakcets.json", "a");
+    fprintf(packetProcessed, "]");
+    fclose(packetProcessed);
 }
