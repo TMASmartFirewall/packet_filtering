@@ -43,11 +43,11 @@ struct dns_request {
 };
 
 struct dns_answer {
-  char* name;
-  int16_t type;
-  int16_t class;
-  int32_t timetolive;
-  int16_t data;
+  int16_t* name;
+  int16_t* type;
+  int16_t* class;
+  int32_t* timetolive;
+  int16_t* data;
   char* cname;
   int32_t addr;
 };

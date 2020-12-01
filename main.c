@@ -87,15 +87,6 @@ void my_packet_handler(
     }
 
 
-    inet_ntop(AF_INET, &(ip_header->ip_src), ip_src, INET_ADDRSTRLEN);
-    inet_ntop(AF_INET, &(ip_header->ip_dst), ip_dst, INET_ADDRSTRLEN);
-
-
-
-    if(ntohs(eth_header->ether_type) != ETHERTYPE_IP){
-        return;
-    }
-
 
 }
 
@@ -105,7 +96,7 @@ void my_packet_handler(
 int main(){
     char error_buffer[PCAP_ERRBUF_SIZE];
 
-    const char* path = "./packets_default.pcap";
+    const char* path = "./http.cap";
     fd = fopen("./logs.json", "w");
     // check if we can read and acces the file
     if (access(path, F_OK|R_OK)){
