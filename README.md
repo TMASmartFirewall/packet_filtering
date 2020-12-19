@@ -1,7 +1,11 @@
 # Packet Filterting
 > The Packet Analizer was developed as the final project, of Traffic Monitoring analisis Subject of the Mater on Cybersecurity at UPC
 
-## Installing
+On this repository you will find the Packet Filtering project. This project is focused on the analysing of .cap files, to find the DNS and HTTP requests to determinate where the user is connecting.
+
+The software consists in two steps, the first one is the filtering process, which will read the .cap file and write a JSON with the found it data. After this process a web server can be opened to see the chart with the data obtained.
+
+To obtain the full power of this project, it's better to use it with [packet action](https://github.com/TMASmartFirewall/packet_action). The idea is to use this repo as analyzer, and after to obtain the results, take an action with packet action.
 
 ## Requirements
 The requirements versions defined below, are the ones used to develop the project:
@@ -9,6 +13,12 @@ The requirements versions defined below, are the ones used to develop the projec
 * Pcap library
 * Node v12.18.4
 * Make v4.2.1
+
+## Installing
+
+
+
+
 
 ## Execution
 To execute the code, it's need it a .cap file, and pass the path to the program on the command line:
