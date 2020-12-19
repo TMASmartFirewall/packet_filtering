@@ -32,6 +32,7 @@ The program will start analising the file and writing the output to the data fol
 After the program execution, run the node.js server to print the data with a beatiful chart on your browser:
 
 ```
+npm install
 node server.js
 ```
 
