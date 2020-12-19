@@ -1,5 +1,14 @@
 #include "PacketFilter.h"
 FILE *packetProcessed;
+
+void debugPrint(char* msg) {
+  char* debug = getenv("DEV");
+  if(strcmp(debug,"true") == 0){
+    fprintf(stderr, "DEBUG: %s\n", msg);
+
+  }
+}
+
 enum HTTP_METHODS getHttpType (
   char* method
 )
@@ -32,15 +41,16 @@ int parseCname(u_char* payload, char** url)
   int currentPosition = 0;
   int x = 0;
   unsigned long currentSize = 0;
-
+  int blockSize;
+  debugPrint("--- parse data --");
   while(payload[currentPosition] != 0x00){
-    char *buffer = NULL;
-    int blockSize = (int) payload[currentPosition];
+    blockSize = (int) payload[currentPosition];
+    printf("Current Block %i\n", blockSize);
     currentPosition += 1;
 
-    currentSize += blockSize + 2;
-    buffer = (char*) realloc(*url, (currentSize + blockSize + 2) * sizeof(char));
-    *url = buffer;
+    currentSize = (currentSize + blockSize + 2) * sizeof(char);
+    *url = (char*) realloc(*url, currentSize);
+    // *url = buffer;
 
     for (x = 0 ; x < blockSize; x += 1){
       (*url)[currentPosition - 1] = (char) payload[currentPosition];
@@ -49,41 +59,41 @@ int parseCname(u_char* payload, char** url)
 
     // currentPosition +=1;
     if(payload[currentPosition] != 0x00)
-      (*url)[currentPosition - 1] = 0x2E;
+    (*url)[currentPosition - 1] = 0x2E;
 
   }
+
   (*url)[currentPosition - 1] = '\0';
   currentPosition+=1;
+  debugPrint("---------------------");
   return currentPosition;
 }
 
-int parseCnameBySize(u_char* payload, char** url, int16_t data)
+int parseCnameBySize(u_char* payload, char** url, int16_t dataSize)
 {
   int currentPosition = 0;
   int x = 0;
+  fprintf(stderr, "- size %i\n", dataSize );
   unsigned long currentSize = 0;
+  *url = (char*) realloc(*url, dataSize * sizeof(char));
+  while(currentPosition < dataSize ){
 
-  while(currentPosition < data ){
-    fprintf(stderr, "data %i, position %i\n",data, currentPosition );
-    char *buffer = NULL;
+    // fprintf(stderr, "position %c\n", payload[currentPosition + 2] );
     int blockSize = (int) payload[currentPosition];
     currentPosition += 1;
-
-    currentSize += blockSize + 2;
-    buffer = (char*) realloc(*url, (currentSize + blockSize + 2) * sizeof(char));
-    *url = buffer;
-
-    for (x = 0 ; x < blockSize && currentPosition < data; x += 1){
+    for (x = 0 ; x < blockSize && currentPosition < dataSize; x += 1){
+      fprintf(stderr, "position %i\n", currentPosition );
       (*url)[currentPosition - 1] = (char) payload[currentPosition];
       currentPosition +=1;
     }
 
     // currentPosition +=1;
-    if(currentPosition < data -1)
+    if(currentPosition < dataSize -1)
       (*url)[currentPosition - 1] = 0x2E;
 
   }
   (*url)[currentPosition - 1] = '\0';
+  fprintf(stderr, "%s\n", *url );
   return currentPosition;
 }
 int parseDnsQuery(
@@ -93,21 +103,22 @@ int parseDnsQuery(
 {
   int currentPosition = 0;
   int x = 0;
+  fprintf(stderr, "%s\n", paquet->url);
   paquet->url = malloc(sizeof(char));
+  fprintf(stderr, "malloc OK!\n" );
   currentPosition+= parseCname(payload, &(paquet->url));
-
   currentPosition += 2;
   paquet->type = (int16_t) *(payload + currentPosition);
   currentPosition += 2;
   paquet->class = (int16_t) *(payload + currentPosition);
   return currentPosition;
 }
+
 void parseDnsAnswer(
   u_char** payload,
   struct dns_answer* paquet
 )
 {
-  fprintf(stderr, "-- position %x \n", (*payload)[0] );
   paquet->name = (int16_t*) *payload;
   *payload += 2;
   paquet->type = (int16_t*) *payload;
@@ -118,10 +129,19 @@ void parseDnsAnswer(
   *payload += 4;
   paquet->data = (int16_t*) *payload;
   *payload += 2;
+  debugPrint("----- PARSE DATA --------");
   if ( ntohs(*(paquet->type)) == 0x0005) {
-    paquet->cname = malloc(sizeof(char));
-    *payload += parseCnameBySize(*payload, &(paquet->cname), ntohs(*(paquet->data)) );
+    // int dataSize =  ntohs(*(paquet->data));
+    // *payload += parseCnameBySize(*payload, &(paquet->cname), dataSize);
+  } else if( ntohs(*(paquet->type)) == 0x0001) {
+    memcpy(paquet->addr, *payload, sizeof(int));
+    memcpy((paquet->addr) + 1, (*payload + 1), sizeof(int));
+    memcpy((paquet->addr) + 2, (*payload + 2), sizeof(int));
+    memcpy((paquet->addr) + 3, (*payload + 3), sizeof(int));
+    *payload += 4;
+    fprintf(stderr, "IP\n");
   }
+  debugPrint("--------------------------");
 
 }
 
@@ -134,10 +154,14 @@ struct dns_query* parseQuestions (
   if(questions > 0x00001){
     return NULL;
   }
-  struct dns_query* query = malloc(ntohs(header->questions) * sizeof(struct dns_query));
+  struct dns_query* query = malloc(questions * sizeof(struct dns_query));
+
+
   int x = 0;
   for(x = 0; x < questions; x += 1) {
+    debugPrint("----------PARSE DNS QUERY-------------");
     *payload += parseDnsQuery(*payload, query + x);
+    debugPrint("--------------------------------------");
   }
   return query;
 }
@@ -145,60 +169,62 @@ struct dns_query* parseQuestions (
 struct dns_answer* parseAnwers (
   struct dnshdr* header,
   u_char** payload
-) {
+)
+{
   int answers = ntohs(header->answers);
   struct dns_answer* answer = malloc(answers * sizeof(struct dns_query));
   int x = 0;
   for(x = 0; x < answers; x += 1) {
-    parseDnsAnswer(payload, answer + x);
-    fprintf(stderr, "-- %s\n", answer[x].cname );
+    parseDnsAnswer(payload, &(answer[x]));
+    fprintf(stderr, "%s\n",answer[x].cname );
   }
   // printDnsResponse(answer);
   return answer;
 }
 
 
-void printDnsRequest(struct dns_request* paquet){
+void printDnsRequest(struct dns_request paquet){
   FILE *packetProcessed = fopen("./pakcets.json", "a");
+  char* true = {"true"};
   char* dns = getenv("DNS");
   char* debug = getenv("DEV");
-  if(strcmp(debug,"true") == 0){
-    fprintf(stderr, "{\n  type: dns \n  id: %i\n  questions: {\n", ntohs(paquet->header->id) );
+  if((debug != NULL || dns != NULL) && strcmp(debug,true) == 0 ){
+
+    fprintf(stderr, "{\n  type: dns \n  id: %i\n  questions: {\n", ntohs(paquet.header->id) );
     int x = 0;
-    for(x =0 ; x < ntohs(paquet->header->questions); x++) {
-      fprintf(stderr, "    %s\n", paquet->query[x].url);
+    for(x =0 ; x < ntohs(paquet.header->questions); x++) {
+      fprintf(stderr, "    %s\n", paquet.query[x].url);
     }
     fprintf(stderr, "  }\n}\n" );
   }
-  fprintf(packetProcessed, "{\n  type: dns \n  id: %i\n  questions: {\n", ntohs(paquet->header->id) );
+  fprintf(packetProcessed, "{\n  type: dns \n  id: %i\n  questions: {\n", ntohs(paquet.header->id) );
   int x = 0;
-  for(x =0 ; x < ntohs(paquet->header->questions); x++) {
-    fprintf(packetProcessed, "    %s\n", paquet->query[x].url);
+  for(x =0 ; x < ntohs(paquet.header->questions); x++) {
+    fprintf(packetProcessed, "    %s\n", paquet.query[x].url);
   }
   fprintf(packetProcessed, "  }\n},\n" );
   fclose(packetProcessed);
 }
-
 void printDnsResponse(struct dns_response* paquet){
-  FILE *packetProcessed = fopen("./pakcets.json", "a");
-  char* dns = getenv("DNS");
-  char* debug = getenv("DEV");
-  int x = 0;
-  // if(strcmp(debug,"true") == 0 || strcmp(dns,"true") == 0){
-    fprintf(stderr, "DNS REPONSE\n {\n  type: dns \n  id: %i\n  questions: {\n", ntohs(paquet->header->id) );
-    // int x = 0;
-    for(x =0 ; x < ntohs(paquet->header->questions); x++) {
-      fprintf(stderr, "    %s\n", paquet->query[x].url);
-    }
-    fprintf(stderr, "  }\n}\n" );
+  // FILE *packetProcessed = fopen("./pakcets.json", "a");
+  // char* dns = getenv("DNS");
+  // char* debug = getenv("DEV");
+  // int x = 0;
+  // // if(strcmp(debug,"true") == 0 || strcmp(dns,"true") == 0){
+  // fprintf(stderr, "DNS REPONSE\n {\n  type: dns \n  id: %i\n  questions: {\n", ntohs(paquet->header->id) );
+  // // int x = 0;
+  // for(x =0 ; x < ntohs(paquet->header->questions); x++) {
+  //   fprintf(stderr, "    %s\n", paquet->query[x].url);
   // }
-  fprintf(packetProcessed, "{\n  type: dns \n  id: %i\n  questions: {\n", ntohs(paquet->header->id) );
-
-  for(x =0 ; x < ntohs(paquet->header->questions); x++) {
-    fprintf(packetProcessed, "    %s\n", paquet->query[x].url);
-  }
-  fprintf(packetProcessed, "  }\n},\n" );
-  fclose(packetProcessed);
+  // fprintf(stderr, "  }\n}\n" );
+  // // }
+  // fprintf(packetProcessed, "{\n  type: dns \n  id: %i\n  questions: {\n", ntohs(paquet->header->id) );
+  //
+  // for(x =0 ; x < ntohs(paquet->header->questions); x++) {
+  //   fprintf(packetProcessed, "    %s\n", paquet->query[x].url);
+  // }
+  // fprintf(packetProcessed, "  }\n},\n" );
+  // fclose(packetProcessed);
 }
 void freeDnsPaquet(struct dns_request* paquet)
 {
@@ -214,19 +240,15 @@ void freeDnsResponse(struct dns_response* paquet)
 {
   int x = 0;
   for(x =0 ; x < ntohs(paquet->header->questions); x++) {
-    free(paquet->query[x].url);
+    free(paquet->query[0].url);
   }
+  // for(x =0 ; x < ntohs(paquet->header->answers); x++) {
+  //   free(paquet->answer[0].cname);
+  // }
   free(paquet->query);
   free(paquet);
 }
 
-void debugPrint(char* msg) {
-  char* debug = getenv("DEV");
-  if(strcmp(debug,"true") != 0){
-    fprintf(stderr, "DEBUG: %s\n", msg);
-
-  }
-}
 
 
 struct dns_request* processDnsRequest(
@@ -236,18 +258,15 @@ struct dns_request* processDnsRequest(
 {
   struct dns_request* request;
   u_char* payload;
-
   request = malloc(sizeof(struct dns_request));
   request->header = (struct dnshdr*)(packet + sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct udphdr));
   payload = (u_char*)(packet + sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct udphdr) + sizeof(struct dnshdr));
   struct dns_query* buffer = parseQuestions(request->header, &payload);
-
   if(buffer == NULL)
-    return NULL;
+  return NULL;
   request->query = buffer;
 
-
-  printDnsRequest(request);
+  printDnsRequest(*request);
   return request;
 }
 struct dns_response* processDnsResponse(
@@ -255,26 +274,22 @@ struct dns_response* processDnsResponse(
   const struct pcap_pkthdr* pkthdr
 )
 {
+  debugPrint("----------PROCES DNS RESPONSE----------");
   struct dns_response* response;
   u_char* payload;
   payload = (u_char*)(packet + sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct udphdr) + sizeof(struct dnshdr));
-  print_uchar_array(payload,pkthdr->len);
   response = malloc(sizeof(struct dns_response));
   response->header = (struct dnshdr*)(packet + sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct udphdr));
-  struct dns_query* buffer = parseQuestions(response->header, &payload);
-
-
-  if(buffer == NULL)
+  debugPrint("----------PARSE QUESTION----------");
+  response->query = parseQuestions(response->header, &payload);
+  debugPrint("----------------------------------");
+  if(response->query == NULL)
     return NULL;
-  response->query = buffer;
-  fprintf(stderr, "out parse %x\n",payload[0] );
-  struct dns_answer* buffer2 = parseAnwers(response->header, &payload);
-
-  if(buffer2 == NULL)
+  response->answer = parseAnwers(response->header, &payload);
+  if(response->answer == NULL)
     return NULL;
-  response->answer = buffer2;
-
   printDnsResponse(response);
+  debugPrint("---------------------------------------");
   return response;
 }
 
@@ -282,7 +297,7 @@ struct dns_response* processDnsResponse(
 void print_uchar_array(u_char* arr, u_int length){
   printf("[");
   for (u_int ctx = 0; ctx < length; ++ctx){
-    printf("%c", *(ctx + arr));
+    printf("- %c", *(ctx + arr));
   }
   printf("]");
 }
@@ -358,9 +373,9 @@ u_char* split_lines_http(u_char* payload, u_int max_length){
 struct http_req* parseHttpFirstLine(
   u_char* payload,
   u_char* first_line,
-   u_int first_line_length
- )
- {
+  u_int first_line_length
+)
+{
   struct http_req* packet = malloc(sizeof(struct http_req));
   // Get method
   u_char* payload_position = get_delimiter(0x20, payload, first_line_length);

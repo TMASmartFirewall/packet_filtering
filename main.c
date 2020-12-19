@@ -67,27 +67,24 @@ void my_packet_handler(
     }
     // DNS PORT 53
     else if(dstPort == 53 ) {
-      struct dns_request* dnsRequest;
-      dnsRequest = processDnsRequest(packet, pkthdr);
-      if(dnsRequest != NULL) {
-        sessData.dns += 1;
-        freeDnsPaquet(dnsRequest);
-      }
+      // struct dns_request* dnsRequest;
+      // dnsRequest = processDnsRequest(packet, pkthdr);
+      // if(dnsRequest != NULL) {
+      //   sessData.dns += 1;
+      //   freeDnsPaquet(dnsRequest);
+      // }
     } else if(sourcePort == 53){
       struct dns_response* dnsResponse;
+      fprintf(stderr, "in\n" );
       dnsResponse = processDnsResponse(packet, pkthdr);
+      fprintf(stderr, "out\n" );
       if(dnsResponse != NULL) {
         sessData.dns += 1;
         freeDnsResponse(dnsResponse);
       }
       return;
 
-    } else {
-      return;
     }
-
-
-
 }
 
 
@@ -96,7 +93,7 @@ void my_packet_handler(
 int main(){
     char error_buffer[PCAP_ERRBUF_SIZE];
 
-    const char* path = "./http.cap";
+    const char* path = "./packets_default.pcap";
     fd = fopen("./logs.json", "w");
     // check if we can read and acces the file
     if (access(path, F_OK|R_OK)){

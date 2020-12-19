@@ -49,7 +49,7 @@ struct dns_answer {
   int32_t* timetolive;
   int16_t* data;
   char* cname;
-  int32_t addr;
+  int addr[4];
 };
 
 struct dns_response {
