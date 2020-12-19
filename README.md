@@ -16,9 +16,10 @@ The requirements versions defined below, are the ones used to develop the projec
 
 ## Installing
 
-
-
-
+To install this project you just need to run the make file.
+```
+make
+```
 
 ## Execution
 To execute the code, it's need it a .cap file, and pass the path to the program on the command line:
