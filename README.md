@@ -7,6 +7,8 @@ The software consists in two steps, the first one is the filtering process, whic
 
 To obtain the full power of this project, it's better to use it with [packet action](https://github.com/TMASmartFirewall/packet_action). The idea is to use this repo as analyzer, and after to obtain the results, take an action with packet action.
 
+![Packet Filter ScreenShoot](./packet_screen.png)
+Packet Filter ui ScreenShoot
 ## Requirements
 The requirements versions defined below, are the ones used to develop the project:
 * GCC 9.3.0
