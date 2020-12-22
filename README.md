@@ -33,7 +33,7 @@ After the program execution, run the node.js server to print the data with a bea
 
 ```
 npm install
-node server.js
+node index.js
 ```
 
 Now open the webbrowser and navigate [localhost:8080](http://127.0.0.1:8080).

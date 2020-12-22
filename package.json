@@ -1,0 +1,22 @@
+{
+  "name": "packet_filtering",
+  "version": "1.0.0",
+  "description": "> The Packet Analizer was developed as the final project, of Traffic Monitoring analisis Subject of the Mater on Cybersecurity at UPC",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TMASmartFirewall/packet_filtering.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/TMASmartFirewall/packet_filtering/issues"
+  },
+  "homepage": "https://github.com/TMASmartFirewall/packet_filtering#readme",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
+}

@@ -1,4 +1,5 @@
-*.json
+pakcets.json
 *cap
 *.out
 PacketFilter
+node_modules/

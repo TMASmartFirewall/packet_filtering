@@ -45,7 +45,6 @@ int parseCname(u_char* payload, char** url)
   debugPrint("--- parse data --");
   while(payload[currentPosition] != 0x00){
     blockSize = (int) payload[currentPosition];
-    printf("Current Block %i\n", blockSize);
     currentPosition += 1;
 
     currentSize = (currentSize + blockSize + 2) * sizeof(char);
@@ -82,7 +81,7 @@ int parseCnameBySize(u_char* payload, char** url, int16_t dataSize)
     int blockSize = (int) payload[currentPosition];
     currentPosition += 1;
     for (x = 0 ; x < blockSize && currentPosition < dataSize; x += 1){
-      fprintf(stderr, "position %i\n", currentPosition );
+
       (*url)[currentPosition - 1] = (char) payload[currentPosition];
       currentPosition +=1;
     }
@@ -103,9 +102,7 @@ int parseDnsQuery(
 {
   int currentPosition = 0;
   int x = 0;
-  fprintf(stderr, "%s\n", paquet->url);
   paquet->url = malloc(sizeof(char));
-  fprintf(stderr, "malloc OK!\n" );
   currentPosition+= parseCname(payload, &(paquet->url));
   currentPosition += 2;
   paquet->type = (int16_t) *(payload + currentPosition);
@@ -176,7 +173,7 @@ struct dns_answer* parseAnwers (
   int x = 0;
   for(x = 0; x < answers; x += 1) {
     parseDnsAnswer(payload, &(answer[x]));
-    fprintf(stderr, "%s\n",answer[x].cname );
+    fprintf(stderr, "\"%s,\"\n",answer[x].cname );
   }
   // printDnsResponse(answer);
   return answer;
@@ -193,16 +190,16 @@ void printDnsRequest(struct dns_request paquet){
     fprintf(stderr, "{\n  type: dns \n  id: %i\n  questions: {\n", ntohs(paquet.header->id) );
     int x = 0;
     for(x =0 ; x < ntohs(paquet.header->questions); x++) {
-      fprintf(stderr, "    %s\n", paquet.query[x].url);
+      fprintf(stderr, "    \"%s\"\n", paquet.query[x].url);
     }
     fprintf(stderr, "  }\n}\n" );
   }
-  fprintf(packetProcessed, "{\n  type: dns \n  id: %i\n  questions: {\n", ntohs(paquet.header->id) );
+  fprintf(packetProcessed, "{\n  \"type\": \"dns\", \n  \"id\": %i,\n  \"question\": ", ntohs(paquet.header->id) );
   int x = 0;
   for(x =0 ; x < ntohs(paquet.header->questions); x++) {
-    fprintf(packetProcessed, "    %s\n", paquet.query[x].url);
+    fprintf(packetProcessed, "\"%s\" ", paquet.query[x].url);
   }
-  fprintf(packetProcessed, "  }\n},\n" );
+  fprintf(packetProcessed, "\n},\n" );
   fclose(packetProcessed);
 }
 void printDnsResponse(struct dns_response* paquet){
